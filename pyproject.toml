@@ -14,6 +14,7 @@ dependencies = [
     "pydantic-settings>=2.13.1",
     "python-dotenv>=1.2.1",
     "tavily-python>=0.7.22",
+    "pdfplumber>=0.11.0",
 ]
 
 [dependency-groups]

@@ -3,28 +3,29 @@ from functools import lru_cache
 
 
 class Settings(BaseSettings):
-    """全局配置，从 .env 文件或环境变量加载"""
+    """Global configuration, loaded from .env or environment variables"""
 
     # API Keys
     google_api_key: str
     tavily_api_key: str
-    jina_api_key: str = ""  # 可选
+    jina_api_key: str = ""       # Optional: Jina Reader API
+    serper_api_key: str = ""     # Optional: Google Search via Serper API
 
-    # LLM 配置
+    # LLM config
     llm_model_name: str = "gemini-2.5-pro"
     llm_temperature: float = 0.2
 
-    # Agent 配置
-    max_searches: int = 5
+    # Agent config
+    max_searches: int = 20       # Total Tavily search budget per run
 
-    # 成本控制（M5 使用，提前预留）
-    max_tavily_calls: int = 15    # 单次运行 Tavily 安全上限（高于 max_searches，作为兜底）
-    max_budget_usd: float = 0.50  # 单次运行费用上限（美元）
+    # Cost control (M5)
+    max_tavily_calls: int = 30   # Hard Tavily safety cap (above max_searches as fallback)
+    max_budget_usd: float = 1.00 # Per-run cost limit (USD)
 
-    # 数据库（M4 使用，提前预留）
+    # Database (M4)
     database_url: str = "sqlite:///data/job_analysis.db"
 
-    # 通知渠道（M5 使用，提前预留）
+    # Notifications (M5)
     notification_channel: str = "console"
     feishu_webhook_url: str = ""
     telegram_bot_token: str = ""
@@ -35,5 +36,5 @@ class Settings(BaseSettings):
 
 @lru_cache
 def get_settings() -> Settings:
-    """获取全局配置单例"""
+    """Get global settings singleton"""
     return Settings()

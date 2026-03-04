@@ -2,22 +2,23 @@ import json
 import httpx
 from langchain_core.tools import tool
 from src.config import get_settings
-from tavily import TavilyClient
 
 settings = get_settings()
+
+# ── Tavily (primary search engine) ──
+from tavily import TavilyClient
 tavily_client = TavilyClient(api_key=settings.tavily_api_key)
 
-# Jina Reader API 前缀（免费额度充足，优先使用）
+# ── Jina Reader API (page reading) ──
 JINA_READER_PREFIX = "https://r.jina.ai/"
 JINA_HEADERS = {"Authorization": f"Bearer {settings.jina_api_key}"} if settings.jina_api_key else {}
 
 
 @tool
 async def search_web(query: str) -> str:
-    """搜索网页获取最新信息。返回 JSON 格式的搜索结果列表，包含标题、URL、摘要和相关度评分。
-    适用于搜索关于 AI 对就业市场影响的报告、数据和新闻。"""
+    """Search the web using Tavily API. Returns JSON with titles, URLs, snippets, and relevance scores.
+    Best for AI and job market reports, data, and news."""
     try:
-        # 注意：Tavily SDK 是同步调用，M4 会用 asyncio.to_thread() 包装避免阻塞事件循环
         results = tavily_client.search(query=query, max_results=5)
         output = {
             "query": query,
@@ -34,11 +35,48 @@ async def search_web(query: str) -> str:
 
 
 @tool
+async def google_search(query: str) -> str:
+    """Search Google via Serper API for comprehensive web results including LinkedIn, Indeed,
+    WEF, McKinsey official sites. Returns JSON with titles, URLs, and snippets.
+    Provides better coverage of English-language authoritative sources than Tavily alone."""
+    serper_key = get_settings().serper_api_key
+    if not serper_key:
+        return json.dumps({"query": query, "results": [], "result_count": 0,
+                           "error": "Serper API key not configured"}, ensure_ascii=False)
+    try:
+        async with httpx.AsyncClient(timeout=15.0) as client:
+            resp = await client.post(
+                "https://google.serper.dev/search",
+                json={"q": query, "num": 10},
+                headers={"X-API-KEY": serper_key, "Content-Type": "application/json"},
+            )
+            resp.raise_for_status()
+            data = resp.json()
+
+            results = []
+            for item in data.get("organic", []):
+                results.append({
+                    "title": item.get("title", ""),
+                    "url": item.get("link", ""),
+                    "snippet": item.get("snippet", ""),
+                    "score": item.get("position"),
+                })
+
+            return json.dumps({
+                "query": query,
+                "results": results,
+                "result_count": len(results),
+                "error": None,
+            }, ensure_ascii=False)
+    except Exception as e:
+        return json.dumps({"query": query, "results": [], "result_count": 0, "error": str(e)}, ensure_ascii=False)
+
+
+@tool
 async def read_page(url: str) -> str:
-    """阅读指定 URL 的网页内容。优先使用 Jina Reader API 获取干净的 Markdown，
-    如果 Jina 失败则降级为 httpx + BeautifulSoup 基础提取。
-    返回 JSON 字符串，包含 status 和 content 字段。内容截断到前 8000 字符。"""
-    # ── 方案 1：Jina Reader API（处理 JS 渲染，输出干净 Markdown）──
+    """Read a web page. Uses Jina Reader API for clean Markdown, falls back to httpx + BeautifulSoup.
+    Returns JSON with status and content fields. Content truncated to 8000 characters."""
+    # ── Method 1: Jina Reader API (handles JS rendering, outputs clean Markdown) ──
     try:
         async with httpx.AsyncClient(timeout=10.0) as client:
             jina_url = f"{JINA_READER_PREFIX}{url}"
@@ -50,11 +88,11 @@ async def read_page(url: str) -> str:
                     "error": None, "truncated": len(resp.text) > 8000,
                 }, ensure_ascii=False)
     except httpx.TimeoutException:
-        pass  # Jina 超时，降级到方案 2
+        pass
     except Exception:
-        pass  # Jina 其他错误，降级
+        pass
 
-    # ── 方案 2：httpx + BeautifulSoup 基础提取 ──
+    # ── Method 2: httpx + BeautifulSoup basic extraction ──
     try:
         from bs4 import BeautifulSoup
 
@@ -78,7 +116,6 @@ async def read_page(url: str) -> str:
             resp.raise_for_status()
 
             soup = BeautifulSoup(resp.text, "html.parser")
-            # 移除干扰元素
             for tag in soup(["script", "style", "nav", "footer", "header"]):
                 tag.decompose()
             text = soup.get_text(separator="\n", strip=True)
@@ -103,11 +140,69 @@ async def read_page(url: str) -> str:
 
 
 @tool
-async def search_report_summary(report_name: str) -> str:
-    """搜索某份权威报告的公开解读和摘要。当报告原文无法直接阅读（付费墙）时，
-    使用此工具搜索该报告的公开解读文章。返回 JSON 格式的搜索结果。"""
+async def download_pdf(url: str) -> str:
+    """Download and parse a PDF document from a URL (e.g., WEF, McKinsey, OECD reports).
+    Extracts text from up to 30 pages. Returns JSON with status and content.
+    Content truncated to 12000 characters for thorough extraction."""
     try:
-        query = f"{report_name} 摘要 解读 key findings"
+        import pdfplumber
+        import io
+
+        async with httpx.AsyncClient(timeout=30.0, follow_redirects=True) as client:
+            resp = await client.get(url, headers={
+                "User-Agent": "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36"
+            })
+
+            if resp.status_code in {401, 402, 403}:
+                return json.dumps({
+                    "url": url, "status": "forbidden",
+                    "content": None, "error": f"Access denied ({resp.status_code})",
+                    "truncated": False, "total_pages": 0, "pages_parsed": 0,
+                }, ensure_ascii=False)
+
+            resp.raise_for_status()
+
+            with pdfplumber.open(io.BytesIO(resp.content)) as pdf:
+                text_parts = []
+                max_pages = min(30, len(pdf.pages))
+                for page in pdf.pages[:max_pages]:
+                    text = page.extract_text()
+                    if text:
+                        text_parts.append(text)
+
+                full_text = "\n\n".join(text_parts)
+                content = full_text[:12000]
+
+                return json.dumps({
+                    "url": url,
+                    "status": "ok",
+                    "content": content,
+                    "error": None,
+                    "truncated": len(full_text) > 12000,
+                    "total_pages": len(pdf.pages),
+                    "pages_parsed": max_pages,
+                }, ensure_ascii=False)
+
+    except httpx.TimeoutException:
+        return json.dumps({
+            "url": url, "status": "timeout",
+            "content": None, "error": "PDF download timed out (30s)",
+            "truncated": False, "total_pages": 0, "pages_parsed": 0,
+        }, ensure_ascii=False)
+    except Exception as e:
+        return json.dumps({
+            "url": url, "status": "error",
+            "content": None, "error": str(e),
+            "truncated": False, "total_pages": 0, "pages_parsed": 0,
+        }, ensure_ascii=False)
+
+
+@tool
+async def search_report_summary(report_name: str) -> str:
+    """Search for public summaries and interpretations of a specific report.
+    Use when the original report is paywalled. Returns JSON search results."""
+    try:
+        query = f"{report_name} summary key findings analysis"
         results = tavily_client.search(query=query, max_results=5)
         output = {
             "query": query,
@@ -123,5 +218,5 @@ async def search_report_summary(report_name: str) -> str:
         return json.dumps({"query": report_name, "results": [], "result_count": 0, "error": str(e)}, ensure_ascii=False)
 
 
-# 导出工具列表
-tools = [search_web, read_page, search_report_summary]
+# Export tool list
+tools = [search_web, google_search, read_page, download_pdf, search_report_summary]
