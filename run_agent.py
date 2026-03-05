@@ -57,15 +57,22 @@ async def main():
         print("=" * 60)
         print(report_json)
 
-        # Print summary
+        # Print bilingual summary
         print("\n" + "-" * 60)
-        print(f"📅 Report Date: {report.report_date}")
-        print(f"📝 Executive Summary: {report.executive_summary}")
-        print(f"🔴 Declining Jobs: {len(report.declining_jobs)}")
-        print(f"🟡 Evolving Jobs: {len(report.evolving_jobs)}")
-        print(f"🟢 Emerging Jobs: {len(report.emerging_jobs)}")
-        print(f"📊 Market Insights: {len(report.market_insights)}")
-        print(f"📚 Reports Referenced: {len(report.key_reports_referenced)}")
+        print(f"📅 Report Date / 报告日期: {report.report_date}")
+        print(f"\n📝 Executive Summary (EN):\n{report.executive_summary}")
+        print(f"\n📝 执行摘要 (ZH):\n{report.executive_summary_zh}")
+        print(f"\n🔴 Declining Jobs / 红区衰退岗位: {len(report.declining_jobs)}")
+        for j in report.declining_jobs:
+            print(f"   - {j.job_title_en} / {j.job_title_zh}")
+        print(f"🟡 Evolving Jobs / 黄区演变岗位: {len(report.evolving_jobs)}")
+        for j in report.evolving_jobs:
+            print(f"   - {j.job_title_en} / {j.job_title_zh}")
+        print(f"🟢 Emerging Jobs / 绿区新兴岗位: {len(report.emerging_jobs)}")
+        for j in report.emerging_jobs:
+            print(f"   - {j.job_title_en} / {j.job_title_zh}")
+        print(f"📊 Market Insights / 市场洞察: {len(report.market_insights)}")
+        print(f"📚 Reports Referenced / 引用报告: {len(report.key_reports_referenced)}")
         print("-" * 60)
 
         # 💾 Save report to project root

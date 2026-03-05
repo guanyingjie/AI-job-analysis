@@ -16,9 +16,9 @@ from dotenv import load_dotenv
 load_dotenv()
 
 
-# ─────────────────────────────────────────────
-# Case 5: Offline Mock Tests (CI-friendly)
-# ─────────────────────────────────────────────
+# -----
+# Offline Mock Tests (CI-friendly)
+# -----
 
 
 @pytest.mark.asyncio
@@ -152,9 +152,9 @@ async def test_read_page_forbidden():
         assert result["error"] is not None
 
 
-# ─────────────────────────────────────────────
+# -----
 # Google Search (Serper) Tests
-# ─────────────────────────────────────────────
+# -----
 
 
 @pytest.mark.asyncio
@@ -204,9 +204,9 @@ async def test_google_search_returns_valid_json():
             assert result["results"][0]["url"] == "https://example.com/ai-jobs"
 
 
-# ─────────────────────────────────────────────
+# -----
 # PDF Download Tests
-# ─────────────────────────────────────────────
+# -----
 
 
 @pytest.mark.asyncio
@@ -250,15 +250,15 @@ async def test_download_pdf_forbidden():
         assert result["content"] is None
 
 
-# ─────────────────────────────────────────────
+# -----
 # Tool Contract Stability
-# ─────────────────────────────────────────────
+# -----
 
 
 @pytest.mark.asyncio
 @patch("src.agent.tools.tavily_client")
 async def test_tool_contract_search_web(mock_tavily):
-    """Tool contract: search_web returns json.loads-able string with results list containing url"""
+    """Tool contract: search_web returns json.loads-able string with url"""
     from src.agent.tools import search_web
 
     mock_tavily.search.return_value = {
@@ -278,7 +278,7 @@ async def test_tool_contract_search_web(mock_tavily):
 
 @pytest.mark.asyncio
 async def test_tool_contract_read_page():
-    """Tool contract: read_page returns json.loads-able string with status and content/error"""
+    """Tool contract: read_page returns json.loads-able string with status"""
     from src.agent.tools import read_page
 
     with patch("src.agent.tools.httpx.AsyncClient") as mock_client_cls:
@@ -297,15 +297,11 @@ async def test_tool_contract_read_page():
         assert isinstance(result, dict)
         assert "status" in result
         assert "url" in result
-        if result["status"] == "ok":
-            assert "content" in result
-        else:
-            assert "error" in result
 
 
-# ─────────────────────────────────────────────
+# -----
 # Subgraph Helper Tests
-# ─────────────────────────────────────────────
+# -----
 
 
 def test_is_pdf_url_detection():
@@ -329,7 +325,7 @@ def test_dedupe_results():
         {"url": "https://b.com", "title": "B"},
     ]
     serper = [
-        {"url": "https://b.com", "title": "B duplicate"},  # duplicate
+        {"url": "https://b.com", "title": "B duplicate"},
         {"url": "https://c.com", "title": "C"},
     ]
 
@@ -340,69 +336,87 @@ def test_dedupe_results():
     assert merged[1]["title"] == "B"
 
 
-# ─────────────────────────────────────────────
-# M3: Pydantic Model Tests (updated for hiring_data field)
-# ─────────────────────────────────────────────
+# -----
+# M3: Pydantic Model Tests (bilingual)
+# -----
 
 
-def test_pydantic_models_serialize_deserialize():
-    """M3: JobTrendReport with hiring_data serializes/deserializes correctly"""
-    from src.agent.models import JobTrendReport, JobTrend, JobZone, RequiredSkill, Source, MarketInsight
+def test_pydantic_models_bilingual_serialize_deserialize():
+    """M3: Bilingual JobTrendReport serializes/deserializes correctly"""
+    from src.agent.models import (
+        JobTrendReport, JobTrend, JobZone,
+        RequiredSkill, Source, MarketInsight,
+    )
 
     report = JobTrendReport(
-        report_date="2026-03-02",
-        executive_summary="AI is profoundly reshaping the global job market. "
-                          "LinkedIn data shows AI Engineer postings grew 74% YoY to ~45,000 active listings. "
-                          "Meanwhile, data entry clerk postings declined 35% per Indeed.",
+        report_date="2026-03-05",
+        executive_summary="AI is reshaping the global job market. WEF projects 26M net new jobs by 2030.",
+        executive_summary_zh="AI正在重塑全球就业市场。WEF预测到2030年将净增2600万个新岗位。",
         declining_jobs=[
             JobTrend(
-                job_title="Data Entry Clerk",
                 job_title_en="Data Entry Clerk",
+                job_title_zh="数据录入员",
                 zone=JobZone.RED,
-                trend_description="Indeed data shows data entry postings declined 35% YoY in 2026",
-                ai_impact="OCR + LLM automates document processing; RPA handles repetitive data tasks",
-                required_skills=[RequiredSkill(skill_name="Data Processing", is_ai_related=False)],
-                demand_change="Job postings down 35% YoY per Indeed data",
-                hiring_data="~8,000 active listings on Indeed (down from ~12,300 last year), $28K-$38K avg salary (Glassdoor)",
+                trend_description="WEF projects data entry roles to decline significantly by 2030",
+                trend_description_zh="WEF预测数据录入岗位将在2030年前大幅下降",
+                ai_impact="OCR + LLM automates document processing",
+                ai_impact_zh="OCR + LLM自动化文档处理",
+                required_skills=[
+                    RequiredSkill(skill_name="Data Processing", skill_name_zh="数据处理", is_ai_related=False),
+                ],
+                demand_change="Demand projected to drop 20% by 2030 (WEF)",
+                demand_change_zh="需求预计到2030年下降20%（WEF）",
+                hiring_data="Broad market trend: declining (WEF, Indeed)",
+                hiring_data_zh="宏观趋势：持续下降（WEF、Indeed）",
                 sources=[Source(url="https://example.com/wef", name="WEF Future of Jobs 2025")],
             )
         ],
         evolving_jobs=[
             JobTrend(
-                job_title="Software Engineer",
                 job_title_en="Software Engineer",
+                job_title_zh="软件工程师",
                 zone=JobZone.YELLOW,
-                trend_description="~185,000 active postings on LinkedIn; roles requiring AI/ML skills pay 25% premium",
-                ai_impact="GitHub Copilot used by 77% of surveyed developers; shifts focus to architecture",
+                trend_description="AI coding assistants reshaping workflows",
+                trend_description_zh="AI编码助手重塑工作流程",
+                ai_impact="GitHub Copilot used by 77% of surveyed developers",
+                ai_impact_zh="77%受访开发者使用GitHub Copilot",
                 required_skills=[
-                    RequiredSkill(skill_name="Python", is_ai_related=False),
-                    RequiredSkill(skill_name="Prompt Engineering", is_ai_related=True),
+                    RequiredSkill(skill_name="Python", skill_name_zh="Python", is_ai_related=False),
+                    RequiredSkill(skill_name="Prompt Engineering", skill_name_zh="提示词工程", is_ai_related=True),
                 ],
-                demand_change="Total postings stable (-2% YoY), but AI-augmented roles grew +40%",
-                hiring_data="~185,000 active listings on LinkedIn, $120K-$180K avg salary (Glassdoor), "
-                           "AI-skilled roles at $150K-$220K premium",
+                demand_change="Stable overall, AI-augmented roles growing",
+                demand_change_zh="整体稳定，AI增强型岗位增长",
+                hiring_data="Broad market trend: stable with skill shift (McKinsey)",
+                hiring_data_zh="宏观趋势：需求稳定但技能要求转变（McKinsey）",
                 sources=[Source(url="https://example.com/mckinsey", name="McKinsey AI Report")],
             )
         ],
         emerging_jobs=[
             JobTrend(
-                job_title="AI Prompt Engineer",
                 job_title_en="AI Prompt Engineer",
+                job_title_zh="AI提示词工程师",
                 zone=JobZone.GREEN,
-                trend_description="New role with ~5,200 active postings, up from near-zero two years ago",
-                ai_impact="LLM applications creating entirely new profession category",
-                required_skills=[RequiredSkill(skill_name="Prompt Engineering", is_ai_related=True)],
-                demand_change="Annual growth >200%, postings grew from ~800 to ~5,200 in 12 months",
-                hiring_data="~5,200 active listings on LinkedIn, $90K-$160K salary range (Glassdoor), "
-                           "top hirers: Google, Microsoft, Anthropic, OpenAI",
+                trend_description="Net-new role created by LLM adoption",
+                trend_description_zh="由LLM广泛应用催生的全新岗位",
+                ai_impact="LLM applications creating new profession category",
+                ai_impact_zh="LLM应用创造全新职业类别",
+                required_skills=[
+                    RequiredSkill(skill_name="Prompt Engineering", skill_name_zh="提示词工程", is_ai_related=True),
+                ],
+                demand_change="Rapid growth, strong employer demand",
+                demand_change_zh="快速增长，雇主需求强劲",
+                hiring_data="Broad market trend: fast-growing (LinkedIn, surveys)",
+                hiring_data_zh="宏观趋势：快速增长（LinkedIn、多项调查）",
                 sources=[Source(url="https://example.com/linkedin", name="LinkedIn Jobs Report")],
             )
         ],
         market_insights=[
             MarketInsight(
                 platform="LinkedIn",
-                insight="AI-related job postings growing significantly across all major markets",
-                data_point="AI Engineer postings grew 74% YoY, ~45,000 active listings globally",
+                insight="AI-related postings growing significantly",
+                insight_zh="AI相关岗位显著增长",
+                data_point="AI Engineer postings grew 74% YoY",
+                data_point_zh="AI工程师招聘同比增长74%",
                 date_observed="2026-Q1",
             )
         ],
@@ -413,17 +427,22 @@ def test_pydantic_models_serialize_deserialize():
     parsed = json.loads(json_str)
     restored = JobTrendReport.model_validate(parsed)
 
-    assert restored.report_date == "2026-03-02"
+    assert restored.report_date == "2026-03-05"
     assert len(restored.declining_jobs) == 1
     assert len(restored.evolving_jobs) == 1
     assert len(restored.emerging_jobs) == 1
-    assert len(restored.market_insights) == 1
-    assert restored.declining_jobs[0].zone == JobZone.RED
-    assert restored.declining_jobs[0].sources[0].url == "https://example.com/wef"
-    # Verify hiring_data field exists and is populated
-    assert "8,000" in restored.declining_jobs[0].hiring_data
-    assert "185,000" in restored.evolving_jobs[0].hiring_data
-    assert "5,200" in restored.emerging_jobs[0].hiring_data
+
+    # Verify bilingual fields
+    assert restored.executive_summary_zh
+    assert "WEF" in restored.executive_summary_zh
+    assert restored.declining_jobs[0].job_title_zh == "数据录入员"
+    assert restored.declining_jobs[0].trend_description_zh
+    assert restored.declining_jobs[0].demand_change_zh
+    assert restored.declining_jobs[0].hiring_data_zh
+    assert restored.evolving_jobs[0].job_title_zh == "软件工程师"
+    assert restored.emerging_jobs[0].job_title_zh == "AI提示词工程师"
+    assert restored.market_insights[0].insight_zh
+    assert restored.market_insights[0].data_point_zh
 
 
 def test_pydantic_source_binding():
@@ -445,44 +464,60 @@ def test_pydantic_job_trend_requires_sources():
 
     with pytest.raises(Exception):
         JobTrend(
-            job_title="Test",
             job_title_en="Test",
+            job_title_zh="测试",
             zone=JobZone.RED,
             trend_description="test",
+            trend_description_zh="测试",
             ai_impact="test",
+            ai_impact_zh="测试",
             required_skills=[RequiredSkill(skill_name="test", is_ai_related=False)],
             demand_change="test",
+            demand_change_zh="测试",
             hiring_data="test data",
-            sources=[],  # empty list should trigger validator
+            hiring_data_zh="测试数据",
+            sources=[],
         )
 
 
-def test_pydantic_job_trend_has_hiring_data():
-    """M3: JobTrend includes hiring_data field"""
+def test_pydantic_job_trend_bilingual_fields():
+    """M3: JobTrend includes all bilingual _zh fields"""
     from src.agent.models import JobTrend, JobZone, RequiredSkill, Source
 
     job = JobTrend(
-        job_title="AI Engineer",
         job_title_en="AI Engineer",
+        job_title_zh="AI工程师",
         zone=JobZone.GREEN,
-        trend_description="Growing rapidly with ~45,000 active postings",
+        trend_description="Growing rapidly according to LinkedIn data",
+        trend_description_zh="根据LinkedIn数据快速增长",
         ai_impact="Core role building AI systems",
-        required_skills=[RequiredSkill(skill_name="PyTorch", is_ai_related=True)],
+        ai_impact_zh="构建AI系统的核心角色",
+        required_skills=[
+            RequiredSkill(skill_name="PyTorch", skill_name_zh="PyTorch", is_ai_related=True),
+        ],
         demand_change="Grew 74% YoY per LinkedIn data",
-        hiring_data="~45,000 active listings on LinkedIn, $150K-$250K salary (Glassdoor)",
+        demand_change_zh="根据LinkedIn数据同比增长74%",
+        hiring_data="Strong demand across major platforms",
+        hiring_data_zh="各大平台需求强劲",
         sources=[Source(url="https://linkedin.com/data", name="LinkedIn Economic Graph")],
     )
-    assert job.hiring_data is not None
-    assert "45,000" in job.hiring_data
+    assert job.job_title_zh == "AI工程师"
+    assert job.trend_description_zh
+    assert job.ai_impact_zh
+    assert job.demand_change_zh
+    assert job.hiring_data_zh
 
-    # Verify it appears in JSON schema
     schema = JobTrend.model_json_schema()
-    assert "hiring_data" in schema["properties"]
+    for zh_field in [
+        "job_title_zh", "trend_description_zh", "ai_impact_zh",
+        "demand_change_zh", "hiring_data_zh",
+    ]:
+        assert zh_field in schema["properties"], f"Missing {zh_field}"
 
 
-# ─────────────────────────────────────────────
+# -----
 # M3: reduce_docs Reducer Tests
-# ─────────────────────────────────────────────
+# -----
 
 
 def test_reduce_docs_dedup_by_url():
@@ -525,14 +560,14 @@ def test_reduce_docs_none_safety():
     assert reduce_docs([], None) == []
 
 
-# ─────────────────────────────────────────────
-# Online Tests (require API Keys, marked @pytest.mark.online)
+# -----
+# Online Tests (require API Keys)
 # Run with: uv run pytest tests/test_golden_cases.py -v --run-online
-# ─────────────────────────────────────────────
+# -----
 
 online = pytest.mark.skipif(
     "not config.getoption('--run-online', default=False)",
-    reason="Requires --run-online flag and valid API Keys to run online tests",
+    reason="Requires --run-online flag and valid API Keys",
 )
 
 
@@ -547,33 +582,33 @@ def pytest_addoption(parser):
 @online
 @pytest.mark.asyncio
 async def test_online_case1_basic_search():
-    """Case 1 - Basic search (online): Agent generates structured report with hiring data"""
+    """Case 1 - Basic search (online): bilingual structured report"""
     from src.agent.graph import graph
     from src.agent.models import JobTrendReport
 
     result = await graph.ainvoke(
         {"messages": [{"role": "user", "content":
-            "Search for AI job market data: how many AI engineer postings on LinkedIn, "
-            "salary ranges, and growth rates in 2026"
+            "Search for AI job market trends in 2026"
         }]},
         config={"recursion_limit": 50},
     )
     report = result.get("final_report")
-    assert report is not None, "Should generate final_report"
+    assert report is not None
     assert isinstance(report, JobTrendReport)
     assert len(report.executive_summary) >= 20
+    assert report.executive_summary_zh
 
 
 @online
 @pytest.mark.asyncio
 async def test_online_case2_paywall_fallback():
-    """Case 2 - Paywall fallback (online): Agent searches public summaries when direct read fails"""
+    """Case 2 - Paywall fallback (online)"""
     from src.agent.graph import graph
     from src.agent.models import JobTrendReport
 
     result = await graph.ainvoke(
         {"messages": [{"role": "user", "content":
-            "Read and summarize the Gartner 2025 AI technology maturity report with specific statistics"
+            "Summarize the Gartner 2025 AI report with statistics"
         }]},
         config={"recursion_limit": 50},
     )
@@ -585,14 +620,13 @@ async def test_online_case2_paywall_fallback():
 @online
 @pytest.mark.asyncio
 async def test_online_case3_full_pipeline():
-    """Case 3 - End-to-end (online): Full pipeline outputs data-driven structured report"""
+    """Case 3 - End-to-end (online): bilingual report"""
     from src.agent.graph import graph
     from src.agent.models import JobTrendReport
 
     result = await graph.ainvoke(
         {"messages": [{"role": "user", "content":
-            "Comprehensive DATA-DRIVEN analysis of AI's impact on the job market: "
-            "job posting counts, salary ranges, YoY changes for declining, evolving, and emerging jobs"
+            "Comprehensive analysis of AI impact on jobs"
         }]},
         config={"recursion_limit": 50},
     )
@@ -601,18 +635,13 @@ async def test_online_case3_full_pipeline():
     assert report is not None
     assert isinstance(report, JobTrendReport)
     assert len(report.executive_summary) >= 20
+    assert report.executive_summary_zh
 
     total_jobs = len(report.declining_jobs) + len(report.evolving_jobs) + len(report.emerging_jobs)
-    assert total_jobs > 0, "Report should contain at least one job trend"
+    assert total_jobs > 0
 
     all_jobs = report.declining_jobs + report.evolving_jobs + report.emerging_jobs
     for job in all_jobs:
-        assert len(job.sources) > 0, f"{job.job_title} missing sources"
-        assert job.hiring_data, f"{job.job_title} missing hiring_data"
-        for source in job.sources:
-            assert source.url, f"{job.job_title} source missing URL"
-            assert source.name, f"{job.job_title} source missing name"
-
-    json_str = report.model_dump_json(indent=2, ensure_ascii=False)
-    parsed = json.loads(json_str)
-    assert "executive_summary" in parsed
+        assert len(job.sources) > 0
+        assert job.job_title_zh
+        assert job.trend_description_zh

@@ -54,50 +54,45 @@ SUMMARIZE_PROMPT = """You are a data analyst specializing in AI & employment mar
 
 **Today's date is {today}.** Focus on {year} data.
 
-Organize search results into a DATA-DRIVEN summary. For EVERY job mentioned, you MUST include:
-
-1. **Current job posting count** — e.g., "~25,000 active listings on LinkedIn as of {today}"
-2. **YoY growth/decline rate** — e.g., "+45% compared to same period last year"
-3. **Salary range** — e.g., "$130K-$200K in US, based on Glassdoor data"
-4. **Key hiring/laying-off companies** — e.g., "Google, Microsoft, Meta actively hiring"
+Organize search results into a comprehensive summary. For EVERY job mentioned, extract:
+- Market demand trend (growth/decline percentages if available)
+- The specific impact of AI (automation vs. augmentation)
+- Key required skills and any mentioned salary trends/premiums
+- Associated industry examples or authoritative report findings
 
 Structure:
-## Red Zone (Declining) — jobs with DECREASING posting counts
-List each job with: posting count, % decline, salary, affected companies
-
-## Yellow Zone (Evolving) — jobs with STABLE but CHANGING posting counts
-List each job with: posting count, skill shift data, new salary premiums for AI skills
-
-## Green Zone (Emerging) — jobs with RAPIDLY INCREASING posting counts
-List each job with: posting count, % growth, salary range, top hiring companies
-
-## Key Data Points
-Bullet list of the most important statistics found
+## Red Zone (Declining) — jobs heavily automated or displaced by AI
+## Yellow Zone (Evolving) — jobs where AI is a copilot, drastically shifting required skills
+## Green Zone (Emerging) — net-new jobs created to build, manage, or govern AI
+## Key Macro Data Points — bullet list of top statistics found across the market
 
 Requirements:
-- EVERY claim must cite a specific number and source
-- If you couldn't find exact numbers for a job, say "Data not available" — do NOT make up numbers
-- Aim for 3-5 jobs per zone
-- Preserve all URLs for citation"""
+- Back claims with report names, percentages, or survey data found in your search.
+- If exact micro-data (like specific salary numbers) is missing, summarize the MACRO trend provided by the sources.
+- Preserve all URLs for citation."""
 
-
-# ⭐ M3: Structured output formatting prompt (data-driven, with date placeholders)
-FORMAT_PROMPT = """Based on the research summary below, generate a structured AI job trend report.
+FORMAT_PROMPT = """Based on the research summary below, generate a BILINGUAL (English + Chinese) structured AI job trend report.
 
 **Report date: {today}.** All data should be from {year}.
 Set report_date to "{today}".
 
-CRITICAL REQUIREMENTS — read carefully:
-1. Each job's `demand_change` MUST contain a specific percentage or number with source,
-   e.g., "Job postings down 35% YoY (LinkedIn data)" — NOT vague statements like "demand declining"
-2. Each job's `hiring_data` MUST contain: approximate active listings count, salary range, and data source.
-   Example: "~12,000 active listings on LinkedIn, $90K-$140K avg salary (Glassdoor), declining 20% YoY"
-   If exact data wasn't found in the summary, write "Exact data not available; estimated based on [source]"
-3. Each job's `trend_description` must cite specific numbers from the research, not generic statements.
-   BAD: "AI is reshaping this role"
-   GOOD: "WEF projects 26M new jobs in AI by 2030; software dev postings with AI skills pay 25% more"
-4. Each job MUST have at least one Source with URL
-5. Aim for 3-5 jobs per zone (Red/Yellow/Green)
-6. `market_insights` must contain data points with specific numbers from job platforms
-7. DO NOT write generic descriptions — ALWAYS back every claim with data from the summary
-8. If the summary lacks data for a particular point, explicitly say "Data not available" rather than fabricating"""
+⚠️ BILINGUAL OUTPUT — This is the most important requirement:
+- Every text field has BOTH an English version AND a Chinese (_zh) version.
+- The English and Chinese versions must convey the SAME information.
+- `executive_summary` = English summary; `executive_summary_zh` = 中文摘要
+- `trend_description` = English; `trend_description_zh` = 中文
+- `ai_impact` = English; `ai_impact_zh` = 中文
+- `demand_change` = English; `demand_change_zh` = 中文
+- `hiring_data` = English; `hiring_data_zh` = 中文
+- `insight` = English; `insight_zh` = 中文
+- `data_point` = English; `data_point_zh` = 中文
+- `job_title_en` = English job title; `job_title_zh` = 中文职位名称
+- `skill_name` = English skill; `skill_name_zh` = 中文技能名称
+
+OTHER REQUIREMENTS:
+1. `demand_change`: Summarize growth/decline trend with percentages if available, otherwise provide a clear qualitative trend.
+2. `hiring_data`: Include listing counts and salaries if available, otherwise write "Broad market trend based on [Source]".
+3. `trend_description`: Explain the "Why" with specific insights, survey results, or company actions.
+4. Each job MUST have at least one Source with a valid URL.
+5. `market_insights`: Extract broad statistical data points.
+6. DO NOT fabricate numbers. If a metric is absent, describe the overarching trend from the cited reports."""

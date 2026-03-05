@@ -1,6 +1,7 @@
-"""M3 Pydantic Data Models — Structured Output Schema
+"""M3 Pydantic Data Models — Structured Output Schema (Bilingual EN/ZH)
 
 Serves both LLM's with_structured_output() and future M4 database ORM mapping.
+Every user-facing text field has an English version and a Chinese (_zh) version.
 """
 
 from pydantic import BaseModel, Field, field_validator
@@ -8,14 +9,15 @@ from enum import Enum
 
 
 class JobZone(str, Enum):
-    RED = "red"        # Declining: being replaced by AI
-    YELLOW = "yellow"  # Evolving: reshaped by AI but not disappearing
-    GREEN = "green"    # Emerging: newly created due to AI
+    RED = "red"        # Declining: being replaced by AI / 红区：被AI取代
+    YELLOW = "yellow"  # Evolving: reshaped by AI but not disappearing / 黄区：被AI重塑但不会消失
+    GREEN = "green"    # Emerging: newly created due to AI / 绿区：因AI而新兴
 
 
 class RequiredSkill(BaseModel):
     """A key skill required for a job position"""
-    skill_name: str = Field(description="Name of the skill")
+    skill_name: str = Field(description="Name of the skill in English")
+    skill_name_zh: str = Field(default="", description="技能名称（中文），例如 '提示词工程'")
     is_ai_related: bool = Field(description="Whether this is an AI-related skill")
 
 
@@ -26,28 +28,44 @@ class Source(BaseModel):
 
 
 class JobTrend(BaseModel):
-    """Trend analysis for a single job position — must include quantitative data"""
-    job_title: str = Field(description="Job title in the original language of the source")
-    job_title_en: str = Field(description="Job title in English")
+    """Trend analysis for a single job position — bilingual (EN + ZH)"""
+    job_title_en: str = Field(description="Job title in English, e.g. 'Data Entry Clerk'")
+    job_title_zh: str = Field(description="职位名称（中文），例如 '数据录入员'")
     zone: JobZone = Field(description="Zone classification: red/yellow/green")
+
     trend_description: str = Field(
-        description="Trend description backed by SPECIFIC DATA: cite numbers, percentages, "
-                    "and sources. E.g., 'WEF projects 26M net new jobs by 2030 in AI-related fields'"
+        description="[English] Trend description backed by data: cite numbers, percentages, sources"
     )
+    trend_description_zh: str = Field(
+        description="[中文] 趋势描述，需引用具体数据、百分比和来源"
+    )
+
     ai_impact: str = Field(
-        description="How AI specifically impacts this job, with concrete examples and data"
+        description="[English] How AI specifically impacts this job, with concrete examples"
     )
-    required_skills: list[RequiredSkill] = Field(description="List of key skills required for this job")
+    ai_impact_zh: str = Field(
+        description="[中文] AI如何具体影响该岗位，附具体案例"
+    )
+
+    required_skills: list[RequiredSkill] = Field(description="List of key skills required")
+
     demand_change: str = Field(
-        description="Quantitative demand change with source. "
-                    "E.g., 'Job postings down 30% YoY per LinkedIn data' or 'Grew 50% YoY per Indeed'"
+        description="[English] Demand change trend with source. "
+                    "E.g. 'Demand projected to drop 20% by 2030 (WEF)'"
     )
+    demand_change_zh: str = Field(
+        description="[中文] 需求变化趋势及来源，例如 '需求预计到2030年下降20%（WEF）'"
+    )
+
     hiring_data: str = Field(
-        description="Current hiring statistics: approximate active job posting count, salary range, "
-                    "growth rate, and data source. "
-                    "E.g., '~15,000 active listings on LinkedIn, $120K-$180K avg salary (Glassdoor), +25% YoY'. "
-                    "If exact data not found, state 'Exact data not available; estimated based on [source]'"
+        description="[English] Hiring statistics or macro trend summary. "
+                    "If exact counts unavailable, write 'Broad market trend based on [Source]'"
     )
+    hiring_data_zh: str = Field(
+        description="[中文] 招聘数据或宏观趋势概述。"
+                    "若无精确数据，写 '基于[来源]的宏观市场趋势'"
+    )
+
     sources: list[Source] = Field(description="List of information sources (URL and name bound together)")
 
     @field_validator("sources")
@@ -59,27 +77,32 @@ class JobTrend(BaseModel):
 
 
 class MarketInsight(BaseModel):
-    """Market insight from job platforms and data sources"""
+    """Market insight from job platforms and data sources — bilingual"""
     platform: str = Field(description="Data source platform, e.g., LinkedIn, Indeed, Glassdoor")
-    insight: str = Field(description="Core insight with specific numbers")
-    data_point: str = Field(
-        description="Key quantitative data point, e.g., 'AI Engineer postings grew 74% YoY, "
-                    "~25,000 active listings on LinkedIn'"
-    )
-    date_observed: str = Field(description="Data observation date or range, e.g., '2025-Q4' or '2025-12'")
+    insight: str = Field(description="[English] Core insight")
+    insight_zh: str = Field(description="[中文] 核心洞察")
+    data_point: str = Field(description="[English] Key data point from the source")
+    data_point_zh: str = Field(description="[中文] 关键数据点")
+    date_observed: str = Field(description="Data observation date or range, e.g., '2025-Q4'")
 
 
 class JobTrendReport(BaseModel):
-    """Complete AI job trend analysis report — data-driven with quantitative evidence"""
+    """Complete AI job trend analysis report — bilingual (EN + ZH)"""
     report_date: str = Field(description="Report generation date in YYYY-MM-DD format")
+
     executive_summary: str = Field(
-        description="Executive summary: key findings in under 300 words, must include specific numbers",
+        description="[English] Executive summary: key findings in under 300 words",
         min_length=20,
     )
-    declining_jobs: list[JobTrend] = Field(description="Red Zone jobs list — declining due to AI, with hiring data")
-    evolving_jobs: list[JobTrend] = Field(description="Yellow Zone jobs list — evolving with AI, with hiring data")
-    emerging_jobs: list[JobTrend] = Field(description="Green Zone jobs list — emerging because of AI, with hiring data")
-    market_insights: list[MarketInsight] = Field(description="Market micro-insights with quantitative data points")
+    executive_summary_zh: str = Field(
+        description="[中文] 执行摘要：300字以内的核心发现",
+        min_length=10,
+    )
+
+    declining_jobs: list[JobTrend] = Field(description="Red Zone / 红区 — declining due to AI")
+    evolving_jobs: list[JobTrend] = Field(description="Yellow Zone / 黄区 — evolving with AI")
+    emerging_jobs: list[JobTrend] = Field(description="Green Zone / 绿区 — emerging because of AI")
+    market_insights: list[MarketInsight] = Field(description="Market insights with data points")
     key_reports_referenced: list[str] = Field(description="List of key report names referenced")
 
     @field_validator("declining_jobs", "evolving_jobs", "emerging_jobs")

@@ -316,6 +316,7 @@ async def format_output_with_retry(state: AgentState, config: RunnableConfig) ->
                 fallback_report = JobTrendReport(
                     report_date=str(date.today()),
                     executive_summary=fallback_summary,
+                    executive_summary_zh=f"结构化输出失败（重试{MAX_FORMAT_RETRIES}次）。摘要片段：{state.summary[:300]}",
                     declining_jobs=[], evolving_jobs=[], emerging_jobs=[],
                     market_insights=[], key_reports_referenced=[]
                 )
@@ -325,6 +326,7 @@ async def format_output_with_retry(state: AgentState, config: RunnableConfig) ->
     fallback_report = JobTrendReport(
         report_date=str(date.today()),
         executive_summary="Unknown error during structured output. Please check logs.",
+        executive_summary_zh="结构化输出发生未知错误，请检查日志。",
         declining_jobs=[], evolving_jobs=[], emerging_jobs=[],
         market_insights=[], key_reports_referenced=[]
     )
